@@ -9,27 +9,49 @@
 -- scale = game size on screen in scale (Normally 1.0)
 -- sound_name = audio name + format (example 1.ogg)
 
--- example
--- TriggerEvent("Mx::StartMinigameElectricCircuit", '50%', '92%', '1.0', '30vmin', '1.ogg', function()
---     print("Oops, I hit the code and ran something")
+-- TriggerEvent example
+-- TriggerEvent("Mx::StartMinigameElectricCircuit", '50%', '50%', '1.0', '30vmin', '1.ogg', function()
+--     print("^2>>>>>>  Success  <<<<<<^7")
+-- end, function()
+--     print("^1>>>>>>  Cancelled  <<<<<<^7")
 -- end)
 
+-- exports example
+-- exports.mx_fixwiring:CircuitGame('50%', '50%', '1.0', '30vmin', '1.ogg', function()
+--     print("^2>>>>>>  Success  <<<<<<^7")
+-- end, function()
+--     print("^1>>>>>>  Cancelled  <<<<<<^7")
+-- end)
+
+-- command example
 -- /startgame 50% 50% 1.0 30vmin 1.ogg
 
-CallBackFunction = nil
+local SuccessFunction, CancelledFunction = nil, nil
 
-RegisterCommand('startgame', function(src, args, cmd) 
-    TriggerEvent("Mx::StartMinigameElectricCircuit", args[1], args[2], args[3], args[4], args[5], function()
-        print(">>>>>>  Success  <<<<<<")
-    end)
-end, false)
+local function CloseNui()
+    local ped = PlayerPedId()
+    ClearPedTasks(ped)
 
-RegisterNetEvent('Mx::StartMinigameElectricCircuit')
-AddEventHandler('Mx::StartMinigameElectricCircuit', function(x, y, scale, size_game, sound_name, Callback)
-    CircuitGame(x, y, scale, size_game, sound_name, Callback)
+    SetNuiFocus(false, false)
+    SendNUIMessage({
+        ui = 'ui',
+        NuiOpen = false,
+    })
+end
+
+RegisterNUICallback('electric_circuit_completed', function(data, cb)
+    if SuccessFunction then SuccessFunction() end
+    CloseNui()
+    cb('ok')
 end)
 
-function CircuitGame(x, y, scale, size_game, sound_name, Callback)
+RegisterNUICallback('CloseNui', function(data, cb)
+    if CancelledFunction then CancelledFunction() end
+    CloseNui()
+    cb('ok')
+end)
+
+local function CircuitGame(x, y, scale, size_game, sound_name, onSuccess, onCancel)
     SetNuiFocus(true,true)
     SendNUIMessage({
         ui = 'ui',
@@ -41,27 +63,20 @@ function CircuitGame(x, y, scale, size_game, sound_name, Callback)
         sound_name = sound_name,
         name_resource = GetCurrentResourceName()
     })
-    CallBackFunction = Callback
+    SuccessFunction = onSuccess
+    CancelledFunction = onCancel
 end
+exports('CircuitGame', CircuitGame)
 
-RegisterNUICallback('electric_circuit_completed', function(data, cb)
-    CallBackFunction()
-    CloseNui()
-    cb('ok')
+RegisterNetEvent('Mx::StartMinigameElectricCircuit', function(x, y, scale, size_game, sound_name, onSuccess, onCancel)
+    CircuitGame(x, y, scale, size_game, sound_name, onSuccess, onCancel)
 end)
 
-RegisterNUICallback('CloseNui', function(data, cb)
-    CloseNui()
-    cb('ok')
-end)
-
-function CloseNui()
-    local ped = PlayerPedId()
-    ClearPedTasks(ped)
-
-    SetNuiFocus(false, false)
-    SendNUIMessage({
-        ui = 'ui',
-        NuiOpen = false,
-    })
-end
+-- Uncomment the following command if you need it available for testing.
+--[[RegisterCommand('startgame', function(src, args, cmd) 
+    TriggerEvent("Mx::StartMinigameElectricCircuit", args[1], args[2], args[3], args[4], args[5], function()
+        print("^2>>>>>>  Success  <<<<<<^7")
+    end, function()
+        print("^1>>>>>>  Cancelled  <<<<<<^7")
+    end)
+end, false)]]
